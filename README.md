@@ -1,0 +1,1 @@
+![Black](https://github.com/EmeraldAnalytics/pyreach/workflows/Black/badge.svg)
