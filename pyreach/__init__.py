@@ -68,7 +68,7 @@ class Reach:
         output_list = list()
         this_page = 1
         while True:
-            params = {**kwargs, "per_page": self.page_size, "page": this_page}
+            params = {"per_page": self.page_size, "page": this_page, **kwargs}
             response = self._get_page(endpoint, api_version, params=params)
             log.info(f"{len(response.json())} records returned on page {this_page}")
             output_list.extend(response.json())
