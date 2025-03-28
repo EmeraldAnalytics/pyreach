@@ -23,42 +23,59 @@ DATE_FMT = "%Y-%m-%d"
 RETRY_ATTEMPTS = 10
 DEFAULT_API_VERSION = 2
 
+
 class BaseResource:
     """Base class for all API resources"""
-    def __init__(self, client: 'Reach', endpoint: str):
+
+    def __init__(self, client: "Reach", endpoint: str):
         self.client = client
         self.endpoint = endpoint
 
-    def get_all(self, api_version: int = DEFAULT_API_VERSION, **kwargs) -> List[Dict[str, Any]]:
+    def get_all(
+        self, api_version: int = DEFAULT_API_VERSION, **kwargs
+    ) -> List[Dict[str, Any]]:
         return self.client.get_object(self.endpoint, api_version, **kwargs)
+
 
 class NestedResource(BaseResource):
     """Base class for nested resources that require parent ID"""
-    def __init__(self, client: 'Reach', parent_endpoint: str, child_endpoint: str, parent_id_field: str):
+
+    def __init__(
+        self,
+        client: "Reach",
+        parent_endpoint: str,
+        child_endpoint: str,
+        parent_id_field: str,
+    ):
         super().__init__(client, f"{parent_endpoint}/{{parent_id}}/{child_endpoint}")
         self.parent_endpoint = parent_endpoint
         self.child_endpoint = child_endpoint
         self.parent_id_field = parent_id_field
 
-    def get_all(self, api_version: int = DEFAULT_API_VERSION, **kwargs) -> List[Dict[str, Any]]:
+    def get_all(
+        self, api_version: int = DEFAULT_API_VERSION, **kwargs
+    ) -> List[Dict[str, Any]]:
         parents = self.client.get_object(self.parent_endpoint, api_version, **kwargs)
         response_list = []
         for parent in parents:
             response = self.client.get_object(
-                self.endpoint.format(parent_id=parent["id"]), 
-                api_version, 
-                **kwargs
+                self.endpoint.format(parent_id=parent["id"]), api_version, **kwargs
             )
-            enriched_response = [{self.parent_id_field: parent["id"], **r} for r in response]
+            enriched_response = [
+                {self.parent_id_field: parent["id"], **r} for r in response
+            ]
             response_list.extend(enriched_response)
         return response_list
 
+
 class Reach:
-    def __init__(self, client_id: str, api_key: str, api_secret: str, page_size: int = 200) -> None:
+    def __init__(
+        self, client_id: str, api_key: str, api_secret: str, page_size: int = 200
+    ) -> None:
         self.base_url = f"https://{client_id}.reachapp.co"
         self.http_auth = (api_key, api_secret)
         self.page_size = page_size
-        
+
         # Initialize resource classes
         self._init_resources()
 
@@ -82,18 +99,25 @@ class Reach:
         self.trips = BaseResource(self, "trips")
         self.uploads = BaseResource(self, "uploads")
         self.videos = BaseResource(self, "videos")
-        
+
         # Nested resources
         self.group_supporters = NestedResource(self, "groups", "supporters", "group_id")
         self.trip_supporters = NestedResource(self, "trips", "supporters", "trip_id")
 
     @retry(
         reraise=True,
-        retry=retry_if_exception_type((HTTPServerError, HTTPClientError, HTTPRateLimitError, HTTPUnknownError)),
+        retry=retry_if_exception_type(
+            (HTTPServerError, HTTPClientError, HTTPRateLimitError, HTTPUnknownError)
+        ),
         wait=wait_exponential(multiplier=1, min=1, max=16),
         stop=stop_after_attempt(RETRY_ATTEMPTS),
     )
-    def _get_page(self, endpoint: str, api_version: int = DEFAULT_API_VERSION, params: Optional[Dict] = None) -> requests.Response:
+    def _get_page(
+        self,
+        endpoint: str,
+        api_version: int = DEFAULT_API_VERSION,
+        params: Optional[Dict] = None,
+    ) -> requests.Response:
         headers = {
             "Content-type": "application/json",
         }
@@ -118,7 +142,9 @@ class Reach:
             log.error("Something is wrong, and I'm not sure what")
             raise HTTPUnknownError(response.text)
 
-    def _get(self, endpoint: str, api_version: int = DEFAULT_API_VERSION, **kwargs) -> List[Dict[str, Any]]:
+    def _get(
+        self, endpoint: str, api_version: int = DEFAULT_API_VERSION, **kwargs
+    ) -> List[Dict[str, Any]]:
         output_list = list()
         this_page = 1
         while True:
@@ -127,18 +153,27 @@ class Reach:
             log.info(f"{len(response.json())} records returned on page {this_page}")
             output_list.extend(response.json())
             if len(response.json()) == self.page_size:
-                log.info("More pages to get. Incrementing this_page and re-entering loop")
+                log.info(
+                    "More pages to get. Incrementing this_page and re-entering loop"
+                )
                 this_page += 1
             else:
-                log.info("No more pages to get. Exiting loop and returning records to caller.")
+                log.info(
+                    "No more pages to get. Exiting loop and returning records to caller."
+                )
                 break
         return output_list
 
-    def get_object(self, object: str, api_version: int = DEFAULT_API_VERSION, **kwargs) -> List[Dict[str, Any]]:
+    def get_object(
+        self, object: str, api_version: int = DEFAULT_API_VERSION, **kwargs
+    ) -> List[Dict[str, Any]]:
         return self._get(object, api_version, **kwargs)
 
-    def get_users(self, api_version: int = DEFAULT_API_VERSION, **kwargs) -> List[Dict[str, Any]]:
+    def get_users(
+        self, api_version: int = DEFAULT_API_VERSION, **kwargs
+    ) -> List[Dict[str, Any]]:
         return self.get_object("user", **kwargs)
+
 
 if __name__ == "__main__":
     pass
