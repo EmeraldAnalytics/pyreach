@@ -15,12 +15,25 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   black:
-    name: Black Check
+    name: Blacken
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-python@v1
+      - uses: actions/checkout@v3
         with:
-          python-version: 3.x
-      - run: pip install black
-      - run: black --check .
+          fetch-depth: 0  # Required for git diff to work properly
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black
+      - name: Fix Black formatting
+        run: black .
+      - name: Commit changes if any
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Apply Black formatting" && git push origin HEAD:${{ github.head_ref || github.ref_name }})
