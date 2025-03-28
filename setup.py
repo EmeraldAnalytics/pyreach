@@ -17,10 +17,10 @@ setup(
         "License :: OSI Approved :: BSD License",
         "Programming Language :: Python :: 3 :: Only",
     ],
-    py_modules=["pyreach"],
+    package_dir={"": "src"},
+    packages=["pyreach"],
     install_requires=[
         "requests",
         "tenacity",
     ],
-    packages=["pyreach"],
 )
