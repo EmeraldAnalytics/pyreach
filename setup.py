@@ -7,7 +7,7 @@ from setuptools import setup
 
 setup(
     name="pyreach",
-    version="0.1.0",
+    version="1.0.0",
     description="Python wrapper for Reach API",
     # long_description=long_description,
     long_description_content_type="text/markdown",
